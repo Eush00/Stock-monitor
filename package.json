@@ -1,0 +1,27 @@
+{
+  "name": "stock-monitor",
+  "version": "1.0.0",
+  "description": "Real-time stock market data monitoring system",
+  "main": "js/app.js",
+  "scripts": {
+    "dev": "live-server --port=3000 --open=/index.html",
+    "build": "node scripts/build.js",
+    "test": "node js/tests/test-runner.js",
+    "lint": "eslint js/**/*.js",
+    "format": "prettier --write \"**/*.{js,css,html,md}\"",
+    "backup": "node js/services/backup-manager.js",
+    "deploy": "npm run build && npm run test"
+  },
+  "keywords": ["stock", "finance", "dashboard", "supabase"],
+  "author": "Your Name",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^8.50.0",
+    "live-server": "^1.2.2",
+    "prettier": "^3.0.3"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "axios": "^1.5.0"
+  }
+}
