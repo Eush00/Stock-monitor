@@ -17,40 +17,36 @@ function minifyCSS(css) {
 // Combina tutti i CSS files
 function buildCSS() {
   console.log('📦 Building CSS...');
-  
+
   const cssFiles = [
     'css/style.css',
     'css/components.css',
     'css/responsive.css',
-    'css/charts.css'
+    'css/charts.css',
   ];
-  
+
   let combinedCSS = '';
-  
+
   cssFiles.forEach(file => {
     if (fs.existsSync(file)) {
       console.log(`  - Adding ${file}`);
       combinedCSS += fs.readFileSync(file, 'utf8') + '\n';
     }
   });
-  
+
   // Minifica e salva
   const minified = minifyCSS(combinedCSS);
   fs.writeFileSync('css/bundle.min.css', minified);
-  
+
   console.log('✅ CSS build completed');
 }
 
 // Valida JavaScript files
 function validateJS() {
   console.log('🔍 Validating JavaScript...');
-  
-  const jsFiles = [
-    'js/config.js',
-    'js/supabase-client.js',
-    'js/app.js'
-  ];
-  
+
+  const jsFiles = ['js/config.js', 'js/supabase-client.js', 'js/app.js'];
+
   jsFiles.forEach(file => {
     if (fs.existsSync(file)) {
       console.log(`  - Validating ${file}`);
@@ -65,7 +61,7 @@ function validateJS() {
       }
     }
   });
-  
+
   console.log('✅ JavaScript validation completed');
 }
 
@@ -74,9 +70,9 @@ function createVersionFile() {
   const version = {
     version: require('../package.json').version,
     buildDate: new Date().toISOString(),
-    buildNumber: process.env.GITHUB_RUN_NUMBER || 'local'
+    buildNumber: process.env.GITHUB_RUN_NUMBER || 'local',
   };
-  
+
   fs.writeFileSync('version.json', JSON.stringify(version, null, 2));
   console.log('✅ Version file created');
 }
@@ -86,7 +82,7 @@ try {
   buildCSS();
   validateJS();
   createVersionFile();
-  
+
   console.log('🎉 Build completed successfully!');
 } catch (error) {
   console.error('❌ Build failed:', error);
