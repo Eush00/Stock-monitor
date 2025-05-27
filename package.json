@@ -1,0 +1,23 @@
+{
+  "name": "stock-monitor-public",
+  "version": "1.0.0",
+  "description": "Public stock data service for GitHub Pages",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server --port=3000 --open=/index.html --watch=css,js",
+    "start": "live-server --port=3000",
+    "test": "echo 'Public service - no tests needed'",
+    "build": "echo 'Static files - no build needed'"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "keywords": [
+    "stock",
+    "finance",
+    "github-pages",
+    "public"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}

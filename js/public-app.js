@@ -22,6 +22,8 @@ class PublicStockMonitor {
   // ========================================
   // INIZIALIZZAZIONE
   // ========================================
+  // Nella classe PublicStockMonitor, aggiungi dopo l'inizializzazione:
+
   async initialize() {
     try {
       this.updateStatus('INITIALIZING', 'Caricamento servizi...');
@@ -30,23 +32,37 @@ class PublicStockMonitor {
         throw new Error('Configurazione non valida');
       }
 
-      // 1. Inizializza Supabase (usando codice esistente)
+      // 1. Inizializza Supabase
       this.supabaseClient = new SupabaseClient();
       await this.supabaseClient.initialize();
       console.log('✅ Supabase connesso');
 
-      // 2. Inizializza Auto Sync Service (usando codice esistente)
+      // 2. Crea Yahoo Finance Service
+      const yahooService = new YahooFinanceService(this.supabaseClient);
+      console.log('✅ Yahoo Finance Service creato');
+
+      // 3. Inizializza Auto Sync Service con simboli limitati
       this.autoSyncService = new AutoSyncService(
-        new YahooFinanceService(this.supabaseClient),
+        yahooService,
         this.supabaseClient
       );
-      console.log('✅ Auto Sync Service inizializzato');
 
-      // 3. Avvia controllo remoto
+      // ✅ SOVRASCRIVI simboli per versione pubblica
+      this.autoSyncService.symbolsToMonitor = CONFIG.testSymbols || [
+        'AAPL',
+        'MSFT',
+        'GOOGL',
+      ];
+      console.log(
+        '✅ Auto Sync Service inizializzato con simboli:',
+        this.autoSyncService.symbolsToMonitor
+      );
+
+      // 4. Avvia controllo remoto
       this.startRemoteControl();
       console.log('✅ Controllo remoto attivato');
 
-      // 4. Avvia sync automatico se abilitato
+      // 5. Avvia sync automatico se abilitato
       if (CONFIG.sync.enabled) {
         await this.startAutoSync();
       }
@@ -54,7 +70,7 @@ class PublicStockMonitor {
       this.isInitialized = true;
       this.updateStatus('READY', 'Servizio operativo');
 
-      // 5. Avvia monitoring statistiche
+      // 6. Avvia monitoring statistiche
       this.startStatsMonitoring();
 
       console.log('🎉 Public Stock Monitor inizializzato');
@@ -78,21 +94,33 @@ class PublicStockMonitor {
   }
 
   async checkRemoteCommands() {
-    const { data, error } = await this.supabaseClient.client
-      .from(CONFIG.control.tableName)
-      .select('*')
-      .eq('processed', false)
-      .order('created_at', { ascending: true })
-      .limit(5);
+    try {
+      const { data, error } = await this.supabaseClient.client
+        .from('sync_control') // Nome tabella corretto
+        .select('*')
+        .eq('processed', false)
+        .order('created_at', { ascending: true })
+        .limit(3); // Ridotto a 3
 
-    if (error) {
-      console.error('❌ Errore lettura comandi:', error);
-      return;
-    }
+      if (error) {
+        // Non logga più l'errore ogni volta per non spammare console
+        if (error.code !== '42P01') {
+          // Se non è "tabella non esiste"
+          console.error('❌ Errore lettura comandi:', error);
+        }
+        return;
+      }
 
-    if (data && data.length > 0) {
-      for (const command of data) {
-        await this.executeRemoteCommand(command);
+      if (data && data.length > 0) {
+        console.log(`📨 Ricevuti ${data.length} comandi da processare`);
+        for (const command of data) {
+          await this.executeRemoteCommand(command);
+        }
+      }
+    } catch (error) {
+      // Silenzioso per evitare spam
+      if (!error.message.includes('does not exist')) {
+        console.error('❌ Errore controllo remoto:', error);
       }
     }
   }
@@ -213,13 +241,17 @@ class PublicStockMonitor {
       const dbStats = await this.supabaseClient.getDatabaseStats();
 
       this.stats.recordsToday = dbStats.stock_data_count || 0;
-      this.stats.symbolsActive = CONFIG.targetSymbols.length;
+      this.stats.symbolsActive =
+        this.autoSyncService?.symbolsToMonitor?.length ||
+        CONFIG.testSymbols.length;
       this.stats.lastSyncTime = new Date();
 
       // Stato del sync service
       if (this.autoSyncService) {
         const syncStatus = this.autoSyncService.getStatus();
         this.stats.status = syncStatus.isRunning ? 'RUNNING' : 'STOPPED';
+        this.stats.apiCallsUsed =
+          syncStatus.rateLimitStatus?.yahoo?.callsLastHour || 0;
       }
     } catch (error) {
       console.error('❌ Errore aggiornamento stats:', error);
@@ -306,7 +338,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   await publicMonitor.initialize();
 });
 
-// Esporta per debug
+// Esporta per debugf
 window.publicMonitor = publicMonitor;
 
 console.log('📄 public-app.js caricato');

@@ -722,24 +722,59 @@ class YahooFinanceService {
   // METODI UTILITY - CONVERSIONI DIRETTE
   // ========================================
 
-  // Simulazione di HttpClient.GetStringAsync() con gestione CORS
   async httpClientGetStringAsync(url) {
-    // Nel browser dobbiamo aggirare CORS, ma manteniamo la stessa logica
-    const corsProxy = 'https://api.allorigins.win/raw?url=';
-    const proxyUrl = corsProxy + encodeURIComponent(url);
+    const proxies = CONFIG.apis?.corsProxies || [
+      'https://corsproxy.io/?',
+      'https://api.codetabs.com/v1/proxy?quest=',
+      'https://api.allorigins.win/raw?url=',
+      '',
+    ];
 
-    const response = await fetch(proxyUrl, {
-      method: 'GET',
-      headers: {
-        Accept: 'application/json',
-      },
-    });
+    for (const proxy of proxies) {
+      try {
+        const proxyUrl = proxy + encodeURIComponent(url);
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        console.log(
+          `🔄 Tentativo con proxy: ${proxy ? proxy.slice(0, 30) + '...' : 'DIRETTO'}`
+        );
+
+        const response = await fetch(proxyUrl, {
+          method: 'GET',
+          headers: {
+            Accept: 'application/json,text/plain,*/*',
+            'User-Agent':
+              'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          },
+          timeout: 15000,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.text();
+
+        // Verifica che sia una risposta valida
+        if (data && data.length > 10 && !data.includes('Error')) {
+          console.log(
+            `✅ Successo con proxy: ${proxy ? proxy.slice(0, 30) + '...' : 'DIRETTO'}`
+          );
+          return data;
+        }
+
+        throw new Error('Risposta non valida');
+      } catch (error) {
+        console.warn(`❌ Proxy fallito ${proxy}: ${error.message}`);
+
+        // Se non è l'ultimo proxy, continua
+        if (proxy !== proxies[proxies.length - 1]) {
+          await this.delay(1000); // Pausa tra tentativi
+          continue;
+        }
+      }
     }
 
-    return await response.text();
+    throw new Error('Tutti i proxy CORS hanno fallito');
   }
 
   delay(ms) {
